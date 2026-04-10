@@ -636,7 +636,7 @@ export function ReviewCartScreen() {
                   </Text>
                 ) : (
                   <Text style={styles.deliveryEta}>
-                    Deliver in 30-60 mins⚡
+                    Deliver in 20-30 mins⚡
                   </Text>
                 )}
                 <Text style={styles.savedAddress} numberOfLines={2}>
@@ -1542,8 +1542,8 @@ const styles = StyleSheet.create({
   },
   deliveryEta: {
     color: '#222',
-    fontSize: 18 / 1.2,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
     fontFamily: 'Inter-Medium',
   },
   locationNotServiceableText: {
