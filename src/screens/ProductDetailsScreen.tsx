@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,7 +29,9 @@ import { formatPrice } from '../utils/format';
 import { getProductImage } from '../utils/productAssets';
 
 export function ProductDetailsScreen() {
-  const IMAGE_FRAME_WIDTH = 108;
+  const { width: screenWidth } = useWindowDimensions();
+  const CARD_WIDTH = screenWidth - 20;
+  const IMAGE_FRAME_WIDTH = CARD_WIDTH;
   const dispatch = useAppDispatch();
   const {
     productsById,
@@ -52,6 +55,13 @@ export function ProductDetailsScreen() {
   }));
 
   const mainProduct = productsById[mainProductId];
+  const discountPct =
+    mainProduct.oldPrice > 0
+      ? Math.round(
+          ((mainProduct.oldPrice - mainProduct.price) / mainProduct.oldPrice) *
+            100,
+        )
+      : 0;
   const selectedProduct: Product | null = selectedProductId
     ? productsById[selectedProductId]
     : null;
@@ -76,7 +86,10 @@ export function ProductDetailsScreen() {
       { source: require('../assets/images/choco-hearts.png'), compact: false },
       { source: require('../assets/images/dairy-milk.png'), compact: false },
       { source: require('../assets/images/tuc-cheezzz.jpg'), compact: true },
-      { source: require('../assets/images/lays-sour-cream-dill.jpg'), compact: true },
+      {
+        source: require('../assets/images/lays-sour-cream-dill.jpg'),
+        compact: true,
+      },
     ],
     [mainProduct.imageKey],
   );
@@ -158,23 +171,26 @@ export function ProductDetailsScreen() {
         />
 
         <View style={styles.mainProductCard}>
-          <Image
-            source={require('../assets/images/discount-badge.png')}
-            style={styles.badge}
-            resizeMode="contain"
-          />
-          <View style={styles.mainImageFrame}>
+          <View style={[styles.imageSection, { width: CARD_WIDTH }]}>
+            <Image
+              source={require('../assets/images/discount-badge.png')}
+              style={styles.badge}
+              resizeMode="contain"
+            />
             <ScrollView
               ref={imageScrollRef}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={handleImageCarouselEnd}
-              style={styles.mainImageScrollView}
+              style={[styles.mainImageScrollView, { width: IMAGE_FRAME_WIDTH }]}
               contentContainerStyle={styles.mainImageCarousel}
             >
               {loopedCarouselSlides.map((slide, idx) => (
-                <View key={`main-image-${idx}`} style={styles.mainImageSlide}>
+                <View
+                  key={`main-image-${idx}`}
+                  style={[styles.mainImageSlide, { width: IMAGE_FRAME_WIDTH }]}
+                >
                   <Image
                     source={slide.source}
                     style={
@@ -187,43 +203,53 @@ export function ProductDetailsScreen() {
                 </View>
               ))}
             </ScrollView>
-          </View>
-          <View style={styles.dotsContainer}>
-            {carouselSlides.map((_, idx) => (
-              <View
-                key={`dot-${idx}`}
-                style={[
-                  styles.dot,
-                  idx === activeImageIndex && styles.activeDot,
-                ]}
-              />
-            ))}
-          </View>
-          <Text style={styles.brand}>{mainProduct.brand}</Text>
-          <Text style={styles.productTitle}>{mainProduct.title}</Text>
-          <Text style={styles.productTitle}>{mainProduct.title}</Text>
-          <Text style={styles.weight}>{mainProduct.weightLabel}</Text>
-          <View style={styles.priceRow}>
-            <View style={styles.priceBlock}>
-              <Text style={styles.price}>{formatPrice(mainProduct.price)}</Text>
-              <Text style={styles.oldPrice}>
-                {formatPrice(mainProduct.oldPrice)}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.optionsButton}
-              onPress={() => openOptions(mainProduct.id)}
-              activeOpacity={0.85}
-            >
-              <View style={styles.optionsButtonContent}>
-                <Text style={styles.optionsText}>2 options</Text>
-                <Image
-                  source={require('../assets/images/chevron-down.png')}
-                  style={styles.optionsChevron}
-                  resizeMode="contain"
+            <View style={styles.dotsContainer}>
+              {carouselSlides.map((_, idx) => (
+                <View
+                  key={`dot-${idx}`}
+                  style={[
+                    styles.dot,
+                    idx === activeImageIndex && styles.activeDot,
+                  ]}
                 />
+              ))}
+            </View>
+          </View>
+          <View style={styles.productInfoSection}>
+            <Text style={styles.brand}>{mainProduct.brand}</Text>
+            <Text style={styles.productTitle}>{mainProduct.title}</Text>
+            <Text style={styles.weight}>{mainProduct.weightLabel}</Text>
+            <View style={styles.priceRow}>
+              <View style={styles.priceBlock}>
+                <Text style={styles.price}>
+                  {formatPrice(mainProduct.price)}
+                </Text>
+                <Text style={styles.oldPrice}>
+                  {formatPrice(mainProduct.oldPrice)}
+                </Text>
+                {discountPct > 0 && (
+                  <View style={styles.discountPctBadge}>
+                    <Text style={styles.discountPctText}>
+                      {discountPct}% off
+                    </Text>
+                  </View>
+                )}
               </View>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.optionsButton}
+                onPress={() => openOptions(mainProduct.id)}
+                activeOpacity={0.85}
+              >
+                <View style={styles.optionsButtonContent}>
+                  <Text style={styles.optionsText}>2 options</Text>
+                  <Image
+                    source={require('../assets/images/chevron-down.png')}
+                    style={styles.optionsChevron}
+                    resizeMode="contain"
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -305,9 +331,15 @@ export function ProductDetailsScreen() {
         <View style={styles.modalOverlay}>
           <Pressable style={styles.overlayTouchable} onPress={closeModal} />
           <View style={styles.bottomSheet}>
+            <View style={styles.dragHandle} />
             <Text style={styles.sheetTitle}>{selectedProduct?.title}</Text>
 
-            <View style={styles.optionCard}>
+            <View
+              style={[
+                styles.optionCard,
+                hasOptionOneSelection && styles.optionCardSelected,
+              ]}
+            >
               <View style={styles.optionLeft}>
                 <View style={styles.optionImageFrame}>
                   <Image
@@ -376,7 +408,12 @@ export function ProductDetailsScreen() {
               )}
             </View>
 
-            <View style={styles.optionCard}>
+            <View
+              style={[
+                styles.optionCard,
+                hasOptionTwoSelection && styles.optionCardSelected,
+              ]}
+            >
               <View style={styles.optionLeft}>
                 <View style={styles.optionImageFrame}>
                   <Image
@@ -480,53 +517,51 @@ const styles = StyleSheet.create({
   mainProductCard: {
     borderRadius: 14,
     backgroundColor: 'white',
+    overflow: 'hidden',
+  },
+  imageSection: {
+    height: 220,
+    backgroundColor: 'white',
+    position: 'relative',
+  },
+  productInfoSection: {
     paddingHorizontal: 9,
-    paddingTop: 8,
+    paddingTop: 10,
     paddingBottom: 9,
   },
   badge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
     width: 40,
     height: 40,
-    marginLeft: 2,
-  },
-  mainImageFrame: {
-    alignSelf: 'center',
-    width: 108,
-    height: 122,
-    borderRadius: 9,
-    backgroundColor: 'white',
-    marginTop: -2,
-    overflow: 'hidden',
+    zIndex: 1,
   },
   mainImageScrollView: {
-    width: 108,
-    height: 122,
+    height: 220,
   },
   mainImageCarousel: {
     alignItems: 'center',
-    minHeight: 122,
+    minHeight: 220,
   },
   mainImageSlide: {
-    width: 108,
-    height: 122,
+    height: 220,
     justifyContent: 'center',
     alignItems: 'center',
   },
   mainImage: {
-    width: 92,
-    height: 164,
-    marginTop: 6,
+    width: 150,
+    height: 200,
   },
   carouselImageCompact: {
-    width: 72,
-    height: 84,
-    marginTop: 6,
+    width: 120,
+    height: 160,
   },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 5,
-    marginBottom: 6,
+    paddingVertical: 8,
   },
   dot: {
     width: 5,
@@ -577,6 +612,19 @@ const styles = StyleSheet.create({
     color: COLORS.strike,
     fontSize: 12.5,
     textDecorationLine: 'line-through',
+    fontFamily: 'Inter-Medium',
+  },
+  discountPctBadge: {
+    backgroundColor: '#e8f5e2',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    alignSelf: 'center',
+  },
+  discountPctText: {
+    color: COLORS.button,
+    fontSize: 11,
+    fontWeight: '600',
     fontFamily: 'Inter-Medium',
   },
   optionsButton: {
@@ -636,7 +684,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomSheet: {
-    backgroundColor: '#F9F9F9',
+    backgroundColor: 'white',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingHorizontal: 12,
@@ -652,9 +700,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
   },
   optionCard: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: 'white',
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: '#dddddd',
     paddingVertical: 6,
     paddingHorizontal: 8,
@@ -673,7 +721,7 @@ const styles = StyleSheet.create({
     width: 62,
     height: 62,
     borderRadius: 9,
-    backgroundColor: '#efefef',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -718,7 +766,7 @@ const styles = StyleSheet.create({
   optionPrice: {
     color: '#1e1f23',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500',
     fontFamily: 'Inter-Medium',
   },
   optionOldPrice: {
@@ -778,6 +826,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Inter-Medium',
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#d0d0d0',
+    alignSelf: 'center',
+    marginBottom: 10,
+  },
+  optionCardSelected: {
+    borderColor: COLORS.button,
+    borderWidth: 1.5,
+    backgroundColor: '#f0f9ee',
   },
   floatingCart: {
     position: 'absolute',

@@ -976,7 +976,7 @@ const styles = StyleSheet.create({
   oosBannerText: {
     color: '#c92a2a',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '400',
     fontFamily: 'Inter-Medium',
   },
   oosCartRow: {
@@ -1282,9 +1282,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cashbackTitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: 'black',
-    fontWeight: '500',
+    fontWeight: '400',
     fontFamily: 'Inter-Medium',
   },
   cashbackSubText: {
@@ -1304,9 +1304,9 @@ const styles = StyleSheet.create({
     borderColor: '#ececec',
   },
   instructionsTitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#202020',
-    fontWeight: '600',
+    fontWeight: '500',
     marginBottom: 10,
     fontFamily: 'Inter-Medium',
   },
@@ -1758,12 +1758,12 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f7b94',
+    // backgroundColor: '#0f7b94',
   },
   pinIcon: {
     width: 24,
     height: 24,
-    tintColor: '#fff',
+    tintColor: '#0f7b94',
   },
   addressTitle: {
     flex: 1,
