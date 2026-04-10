@@ -2,7 +2,7 @@ import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
 type UIState = {
   selectedProductId: string | null;
-  currentScreen: 'product' | 'reviewCart';
+  currentScreen: 'product' | 'reviewCart' | 'orderSuccess';
 };
 
 const initialState: UIState = {
@@ -26,6 +26,10 @@ const uiSlice = createSlice({
     navigateToProduct(state) {
       state.currentScreen = 'product';
     },
+    navigateToOrderSuccess(state) {
+      state.currentScreen = 'orderSuccess';
+      state.selectedProductId = null;
+    },
   },
 });
 
@@ -34,5 +38,6 @@ export const {
   closeOptionsModal,
   navigateToReviewCart,
   navigateToProduct,
+  navigateToOrderSuccess,
 } = uiSlice.actions;
 export const uiReducer = uiSlice.reducer;

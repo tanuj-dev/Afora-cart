@@ -7,7 +7,13 @@ export type Product = {
   weightLabel: string;
   price: number;
   oldPrice: number;
-  imageKey: 'dairyMilk' | 'skyr' | 'chocoHearts';
+  imageKey:
+    | 'dairyMilk'
+    | 'skyr'
+    | 'chocoHearts'
+    | 'laysSaltVinegar'
+    | 'laysClassic'
+    | 'laysClassicKetchup';
   cta: ProductCTA;
 };
 
@@ -82,7 +88,54 @@ export const productsById: Record<string, Product> = {
     imageKey: 'chocoHearts',
     cta: 'add',
   },
+  laysSv: {
+    id: 'laysSv',
+    brand: "Lay's",
+    title: 'Salt & Vinegar Potato Chips',
+    weightLabel: '220 g',
+    price: 199,
+    oldPrice: 249,
+    imageKey: 'laysSaltVinegar',
+    cta: 'options',
+  },
+  laysClassic: {
+    id: 'laysClassic',
+    brand: "Lay's",
+    title: 'Classic Potato Chips',
+    weightLabel: '235 g',
+    price: 199,
+    oldPrice: 249,
+    imageKey: 'laysClassic',
+    cta: 'options',
+  },
+  laysClassicKetchup: {
+    id: 'laysClassicKetchup',
+    brand: "Lay's",
+    title: 'Classic & Ketchup Potato Chips',
+    weightLabel: '235 g',
+    price: 199,
+    oldPrice: 249,
+    imageKey: 'laysClassicKetchup',
+    cta: 'options',
+  },
 };
 
-export const similarProductIds = ['1', '2', '3'];
-export const customerAlsoBoughtIds = ['c1', 'c2', 'c3'];
+export const similarProductIds = [
+  '1',
+  '2',
+  '3',
+  'laysSv',
+  'laysClassic',
+  'laysClassicKetchup',
+];
+export const customerAlsoBoughtIds = [
+  'c1',
+  'c2',
+  'c3',
+  'laysSv',
+  'laysClassic',
+  'laysClassicKetchup',
+];
+
+/** Cart lines containing any of these ids show as out of stock on Review Cart until removed. */
+export const outOfStockProductIds: readonly string[] = ['1', '2'];

@@ -56,7 +56,9 @@ export function ProductDetailsScreen() {
     ? productsById[selectedProductId]
     : null;
   const optionOneProductId = selectedProductId;
-  const optionTwoProductId = selectedProductId ? `${selectedProductId}__2x` : null;
+  const optionTwoProductId = selectedProductId
+    ? `${selectedProductId}__2x`
+    : null;
   const optionOneQty = optionOneProductId
     ? quantitiesByProductId[optionOneProductId] ?? 0
     : 0;
@@ -67,22 +69,24 @@ export function ProductDetailsScreen() {
   const hasOptionTwoSelection = optionTwoQty > 0;
   const imageScrollRef = useRef<ScrollView>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const carouselImages = useMemo(
+  const carouselSlides = useMemo(
     () => [
-      getProductImage(mainProduct.imageKey),
-      require('../assets/images/skyr.png'),
-      require('../assets/images/choco-hearts.png'),
-      require('../assets/images/dairy-milk.png'),
+      { source: getProductImage(mainProduct.imageKey), compact: false },
+      { source: require('../assets/images/skyr.png'), compact: false },
+      { source: require('../assets/images/choco-hearts.png'), compact: false },
+      { source: require('../assets/images/dairy-milk.png'), compact: false },
+      { source: require('../assets/images/tuc-cheezzz.jpg'), compact: true },
+      { source: require('../assets/images/lays-sour-cream-dill.jpg'), compact: true },
     ],
     [mainProduct.imageKey],
   );
-  const loopedCarouselImages = useMemo(
+  const loopedCarouselSlides = useMemo(
     () => [
-      carouselImages[carouselImages.length - 1],
-      ...carouselImages,
-      carouselImages[0],
+      carouselSlides[carouselSlides.length - 1],
+      ...carouselSlides,
+      carouselSlides[0],
     ],
-    [carouselImages],
+    [carouselSlides],
   );
 
   useEffect(() => {
@@ -104,7 +108,7 @@ export function ProductDetailsScreen() {
   const handleImageCarouselEnd = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
-    const totalRealImages = carouselImages.length;
+    const totalRealImages = carouselSlides.length;
     const currentPage = Math.round(
       event.nativeEvent.contentOffset.x / IMAGE_FRAME_WIDTH,
     );
@@ -166,13 +170,18 @@ export function ProductDetailsScreen() {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onMomentumScrollEnd={handleImageCarouselEnd}
+              style={styles.mainImageScrollView}
               contentContainerStyle={styles.mainImageCarousel}
             >
-              {loopedCarouselImages.map((imageSource, idx) => (
+              {loopedCarouselSlides.map((slide, idx) => (
                 <View key={`main-image-${idx}`} style={styles.mainImageSlide}>
                   <Image
-                    source={imageSource}
-                    style={styles.mainImage}
+                    source={slide.source}
+                    style={
+                      slide.compact
+                        ? styles.carouselImageCompact
+                        : styles.mainImage
+                    }
                     resizeMode="contain"
                   />
                 </View>
@@ -180,7 +189,7 @@ export function ProductDetailsScreen() {
             </ScrollView>
           </View>
           <View style={styles.dotsContainer}>
-            {carouselImages.map((_, idx) => (
+            {carouselSlides.map((_, idx) => (
               <View
                 key={`dot-${idx}`}
                 style={[
@@ -322,7 +331,9 @@ export function ProductDetailsScreen() {
                   </Text>
                   <View style={styles.optionPriceRow}>
                     <Text style={styles.optionPrice}>
-                      {selectedProduct ? formatPrice(selectedProduct.price * 2) : ''}
+                      {selectedProduct
+                        ? formatPrice(selectedProduct.price * 2)
+                        : ''}
                     </Text>
                     <Text style={styles.optionOldPrice}>
                       {selectedProduct
@@ -452,6 +463,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: 'white',
+    paddingTop: 0,
   },
   container: {
     flex: 1,
@@ -484,21 +496,30 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: 'white',
     marginTop: -2,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    paddingBottom: 4,
     overflow: 'hidden',
+  },
+  mainImageScrollView: {
+    width: 108,
+    height: 122,
   },
   mainImageCarousel: {
     alignItems: 'center',
+    minHeight: 122,
   },
   mainImageSlide: {
     width: 108,
+    height: 122,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   mainImage: {
     width: 92,
     height: 164,
+    marginTop: 6,
+  },
+  carouselImageCompact: {
+    width: 72,
+    height: 84,
     marginTop: 6,
   },
   dotsContainer: {

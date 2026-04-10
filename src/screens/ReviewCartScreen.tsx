@@ -15,20 +15,49 @@ import { ReviewSectionCard } from '../components/ReviewSectionCard';
 import { ScreenHeader } from '../components/ScreenHeader';
 import { SimilarProductCard } from '../components/SimilarProductCard';
 import { COLORS } from '../constants/colors';
+import { outOfStockProductIds, similarProductIds } from '../constants/products';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import {
+  clearCart,
   decrementQty,
   incrementQty,
   setDeliveryAddress,
   setSelectedCoupon,
+  setQty,
 } from '../redux/cartSlice';
 import {
   closeOptionsModal,
+  navigateToOrderSuccess,
   navigateToProduct,
   openOptionsModal,
 } from '../redux/uiSlice';
 import { formatPrice } from '../utils/format';
 import { getProductImage } from '../utils/productAssets';
+
+const outOfStockSet = new Set(outOfStockProductIds);
+
+function isProductIdOutOfStock(productId: string): boolean {
+  if (outOfStockSet.has(productId)) {
+    return true;
+  }
+  const baseId = productId.replace(/__2x$/, '');
+  return outOfStockSet.has(baseId);
+}
+
+function isLineOutOfStock(sourceProductIds: string[]): boolean {
+  return sourceProductIds.some(id => isProductIdOutOfStock(id));
+}
+
+/** Areas we do not deliver to (matched case-insensitively on substring). */
+const NON_SERVICEABLE_SUBSTRINGS = ['noida', 'delhi'] as const;
+
+function isAddressNonServiceable(address: string | null): boolean {
+  if (!address?.trim()) {
+    return false;
+  }
+  const lower = address.trim().toLowerCase();
+  return NON_SERVICEABLE_SUBSTRINGS.some(sub => lower.includes(sub));
+}
 
 export function ReviewCartScreen() {
   const dispatch = useAppDispatch();
@@ -110,7 +139,17 @@ export function ReviewCartScreen() {
       }, {}),
   );
 
-  const itemTotal = cartItems.reduce(
+  const oosCartItems = cartItems.filter(item =>
+    isLineOutOfStock(item.sourceProductIds),
+  );
+  const inStockCartItems = cartItems.filter(
+    item => !isLineOutOfStock(item.sourceProductIds),
+  );
+  const checkoutBlockedByOos = oosCartItems.length > 0;
+  const checkoutBlockedByLocation = isAddressNonServiceable(deliveryAddress);
+  const proceedDisabled = checkoutBlockedByOos || checkoutBlockedByLocation;
+
+  const itemTotal = inStockCartItems.reduce(
     (sum, item) => sum + item.product.price * item.quantity,
     0,
   );
@@ -163,7 +202,9 @@ export function ReviewCartScreen() {
     ? productsById[selectedProductId]
     : null;
   const optionOneProductId = selectedProductId;
-  const optionTwoProductId = selectedProductId ? `${selectedProductId}__2x` : null;
+  const optionTwoProductId = selectedProductId
+    ? `${selectedProductId}__2x`
+    : null;
   const optionOneQty = optionOneProductId
     ? quantitiesByProductId[optionOneProductId] ?? 0
     : 0;
@@ -207,11 +248,73 @@ export function ReviewCartScreen() {
           </View>
         </View>
 
+        {oosCartItems.length > 0 && (
+          <ReviewSectionCard style={styles.cartCard}>
+            {oosCartItems.map(item => (
+              <View key={`oos-${item.mergedKey}`} style={styles.oosLineWrap}>
+                <View style={styles.oosBanner}>
+                  <Text style={styles.oosBannerText}>
+                    This item is out of stock
+                  </Text>
+                </View>
+                <View style={[styles.cartRow, styles.oosCartRow]}>
+                  <Image
+                    source={getProductImage(item.product.imageKey)}
+                    style={styles.cartImage}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.cartInfo}>
+                    <Text style={styles.cartTitle}>{item.product.title}</Text>
+                    <Text style={styles.cartWeight}>
+                      {item.quantity} x {item.product.weightLabel}
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      item.sourceProductIds.forEach(productId => {
+                        dispatch(setQty({ productId, quantity: 0 }));
+                      });
+                    }}
+                  >
+                    <Text style={styles.deleteButtonText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </ReviewSectionCard>
+        )}
+
+        <ReviewSectionCard style={styles.forgotCard}>
+          <Text style={styles.forgotTitle}>Similar items</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {similarProductIds.map(productId => (
+              <SimilarProductCard
+                key={`similar-${productId}`}
+                item={productsById[productId]}
+                quantity={quantitiesByProductId[productId] ?? 0}
+                onOptionsPress={id => dispatch(openOptionsModal(id))}
+                onAddPress={id => dispatch(incrementQty(id))}
+                onIncrementPress={id => dispatch(incrementQty(id))}
+                onDecrementPress={id => dispatch(decrementQty(id))}
+              />
+            ))}
+          </ScrollView>
+        </ReviewSectionCard>
+
         <ReviewSectionCard style={styles.cartCard}>
-          {cartItems.length === 0 ? (
-            <Text style={styles.emptyText}>Your cart is empty.</Text>
+          {inStockCartItems.length === 0 ? (
+            cartItems.length === 0 ? (
+              <Text style={styles.emptyText}>Your cart is empty.</Text>
+            ) : (
+              <Text style={styles.emptyText}>
+                No available items in cart. Delete unavailable items above or
+                add more products.
+              </Text>
+            )
           ) : (
-            cartItems.map(item => (
+            inStockCartItems.map(item => (
               <View key={item.mergedKey} style={styles.cartRow}>
                 <Image
                   source={getProductImage(item.product.imageKey)}
@@ -519,14 +622,24 @@ export function ReviewCartScreen() {
         {deliveryAddress ? (
           <View style={styles.addressSummaryCard}>
             <View style={styles.addressTopRow}>
-              <Image
-                source={require('../assets/images/location-pin.png')}
-                style={styles.summaryPinIcon}
-                resizeMode="contain"
-              />
+              <View style={styles.summaryPinWrap}>
+                <Image
+                  source={require('../assets/images/location-pin.png')}
+                  style={styles.summaryPinIconInner}
+                  resizeMode="contain"
+                />
+              </View>
               <View style={styles.addressTopTextWrap}>
-                <Text style={styles.deliveryEta}>Deliver in 30-60 mins⚡</Text>
-                <Text style={styles.savedAddress} numberOfLines={1}>
+                {checkoutBlockedByLocation ? (
+                  <Text style={styles.locationNotServiceableText}>
+                    Location is not serviceable
+                  </Text>
+                ) : (
+                  <Text style={styles.deliveryEta}>
+                    Deliver in 30-60 mins⚡
+                  </Text>
+                )}
+                <Text style={styles.savedAddress} numberOfLines={2}>
                   Home | {deliveryAddress}
                 </Text>
               </View>
@@ -548,23 +661,52 @@ export function ReviewCartScreen() {
                 </Text>
               </View>
               <TouchableOpacity
-                style={styles.proceedButton}
-                activeOpacity={0.9}
+                style={[
+                  styles.proceedButton,
+                  proceedDisabled && styles.proceedButtonDisabled,
+                ]}
+                activeOpacity={proceedDisabled ? 1 : 0.9}
+                disabled={proceedDisabled}
+                onPress={() => {
+                  if (proceedDisabled) {
+                    return;
+                  }
+                  dispatch(clearCart());
+                  dispatch(navigateToOrderSuccess());
+                }}
               >
-                <Text style={styles.proceedText}>Proceed</Text>
+                <Text
+                  style={[
+                    styles.proceedText,
+                    proceedDisabled && styles.proceedTextDisabled,
+                  ]}
+                >
+                  Proceed
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <TouchableOpacity
-            style={styles.proceedButton}
-            activeOpacity={0.9}
+            style={[
+              styles.proceedButton,
+              proceedDisabled && styles.proceedButtonDisabled,
+            ]}
+            activeOpacity={proceedDisabled ? 1 : 0.9}
+            disabled={proceedDisabled}
             onPress={() => {
               setAddressInput(deliveryAddress ?? '');
               setIsAddressModalVisible(true);
             }}
           >
-            <Text style={styles.proceedText}>Proceed</Text>
+            <Text
+              style={[
+                styles.proceedText,
+                proceedDisabled && styles.proceedTextDisabled,
+              ]}
+            >
+              Proceed
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -620,7 +762,8 @@ export function ReviewCartScreen() {
                 <View style={styles.optionsQtyControl}>
                   <TouchableOpacity
                     onPress={() =>
-                      optionOneProductId && dispatch(decrementQty(optionOneProductId))
+                      optionOneProductId &&
+                      dispatch(decrementQty(optionOneProductId))
                     }
                   >
                     <Text style={styles.optionsQtyAction}>−</Text>
@@ -628,7 +771,8 @@ export function ReviewCartScreen() {
                   <Text style={styles.optionsQtyValue}>{optionOneQty}</Text>
                   <TouchableOpacity
                     onPress={() =>
-                      optionOneProductId && dispatch(incrementQty(optionOneProductId))
+                      optionOneProductId &&
+                      dispatch(incrementQty(optionOneProductId))
                     }
                   >
                     <Text style={styles.optionsQtyAction}>+</Text>
@@ -638,7 +782,8 @@ export function ReviewCartScreen() {
                 <TouchableOpacity
                   style={styles.optionsAddButton}
                   onPress={() =>
-                    optionOneProductId && dispatch(incrementQty(optionOneProductId))
+                    optionOneProductId &&
+                    dispatch(incrementQty(optionOneProductId))
                   }
                 >
                   <Text style={styles.optionsAddText}>Add</Text>
@@ -682,7 +827,8 @@ export function ReviewCartScreen() {
                 <View style={styles.optionsQtyControl}>
                   <TouchableOpacity
                     onPress={() =>
-                      optionTwoProductId && dispatch(decrementQty(optionTwoProductId))
+                      optionTwoProductId &&
+                      dispatch(decrementQty(optionTwoProductId))
                     }
                   >
                     <Text style={styles.optionsQtyAction}>−</Text>
@@ -690,7 +836,8 @@ export function ReviewCartScreen() {
                   <Text style={styles.optionsQtyValue}>{optionTwoQty}</Text>
                   <TouchableOpacity
                     onPress={() =>
-                      optionTwoProductId && dispatch(incrementQty(optionTwoProductId))
+                      optionTwoProductId &&
+                      dispatch(incrementQty(optionTwoProductId))
                     }
                   >
                     <Text style={styles.optionsQtyAction}>+</Text>
@@ -700,7 +847,8 @@ export function ReviewCartScreen() {
                 <TouchableOpacity
                   style={styles.optionsAddButton}
                   onPress={() =>
-                    optionTwoProductId && dispatch(incrementQty(optionTwoProductId))
+                    optionTwoProductId &&
+                    dispatch(incrementQty(optionTwoProductId))
                   }
                 >
                   <Text style={styles.optionsAddText}>Add</Text>
@@ -813,6 +961,44 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
   },
   cartCard: { backgroundColor: 'white', borderRadius: 16, padding: 10 },
+  oosLineWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#f0c4c4',
+  },
+  oosBanner: {
+    backgroundColor: '#fdecec',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  oosBannerText: {
+    color: '#c92a2a',
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Inter-Medium',
+  },
+  oosCartRow: {
+    marginBottom: 0,
+    borderRadius: 0,
+    borderWidth: 0,
+  },
+  deleteButton: {
+    borderWidth: 1.5,
+    borderColor: COLORS.button,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    backgroundColor: '#fff',
+    alignSelf: 'center',
+  },
+  deleteButtonText: {
+    color: COLORS.button,
+    fontWeight: '600',
+    fontSize: 13,
+    fontFamily: 'Inter-Medium',
+  },
   emptyText: {
     textAlign: 'center',
     color: '#777',
@@ -1338,9 +1524,18 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e0e0e0',
     gap: 10,
   },
-  summaryPinIcon: {
-    width: 28,
-    height: 28,
+  summaryPinWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    // backgroundColor: '#0f7b94',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryPinIconInner: {
+    width: 24,
+    height: 24,
+    tintColor: '#0f7b94',
   },
   addressTopTextWrap: {
     flex: 1,
@@ -1351,6 +1546,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Inter-Medium',
   },
+  locationNotServiceableText: {
+    color: '#d6455c',
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter-Medium',
+  },
   savedAddress: {
     color: '#7b7b7b',
     fontSize: 17 / 1.3,
@@ -1359,8 +1560,8 @@ const styles = StyleSheet.create({
   },
   changeText: {
     color: COLORS.button,
-    fontSize: 18 / 1.2,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
     fontFamily: 'Inter-Medium',
   },
   addressBottomRow: {
@@ -1377,7 +1578,7 @@ const styles = StyleSheet.create({
   },
   toPayAmount: {
     marginTop: 2,
-    fontSize: 44 / 1.5,
+    fontSize: 17,
     color: '#1f1f1f',
     fontWeight: '700',
     fontFamily: 'Inter-Medium',
@@ -1391,11 +1592,18 @@ const styles = StyleSheet.create({
     minWidth: 152,
     paddingHorizontal: 22,
   },
+  proceedButtonDisabled: {
+    backgroundColor: '#b8d4a8',
+    opacity: 0.85,
+  },
   proceedText: {
     color: '#f8fff8',
     fontSize: 17,
     fontWeight: '600',
     fontFamily: 'Inter-Medium',
+  },
+  proceedTextDisabled: {
+    color: '#eef6ee',
   },
   optionsSheet: {
     backgroundColor: '#efefef',

@@ -61,6 +61,11 @@ const cartSlice = createSlice({
     setDeliveryAddress(state, action: PayloadAction<string | null>) {
       state.deliveryAddress = action.payload;
     },
+    clearCart(state) {
+      state.quantitiesByProductId = {};
+      state.selectedCouponId = null;
+      state.deliveryAddress = null;
+    },
   },
 });
 
@@ -71,5 +76,6 @@ export const {
   setQty,
   setSelectedCoupon,
   setDeliveryAddress,
+  clearCart,
 } = cartSlice.actions;
 export const cartReducer = cartSlice.reducer;
